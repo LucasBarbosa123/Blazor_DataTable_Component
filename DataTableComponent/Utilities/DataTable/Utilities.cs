@@ -51,16 +51,14 @@ namespace DataTableComponent.Utilities.DataTable
 
         public static List<List<string>> OrderMatrixByColumn(this List<List<string>> list, int orderedColumn, bool orderUp)
         {
-            // Ensure the column index is valid for at least one list inside the main list
             if (list == null || list.Count == 0 || list.All(subList => orderedColumn >= subList.Count))
             {
                 return list;
             }
 
-            // Sort based on the specified column
             var orderedList = list
                 .Where(subList => orderedColumn < subList.Count) // Ignore lists that are too short to contain the ordered column
-                .OrderBy(subList => subList[orderedColumn], StringComparer.Ordinal) // Sort ascending by default
+                .OrderBy(subList => subList[orderedColumn], StringComparer.Ordinal)
                 .ToList();
 
             if (!orderUp)
