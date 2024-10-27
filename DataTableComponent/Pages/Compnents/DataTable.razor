@@ -1,0 +1,650 @@
+﻿@using System.Reflection
+@using System.Text.Json
+@using DataTableComponent.Utilities.DataTable
+
+@if (TableObjects != null)
+{
+    <style>
+        .cross-icon {
+            position: relative;
+            cursor: pointer;
+            z-index: 9999;
+            right: 20px;
+        }
+
+            .cross-icon::before {
+                content: '';
+                position: absolute;
+                width: 24px;
+                height: 24px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" width="24" height="24" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>');
+                background-size: contain;
+                background-repeat: no-repeat;
+                pointer-events: all;
+            }
+    </style>
+
+    @if (HasPagination)
+    {
+        @* Top Utilities *@
+        <div class="w-100 d-flex justify-content-end">
+            <div class="input-group" style="width: 20% !important;">
+                <span class="input-group-text text-black">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
+                <input type="text" class="form-control" style="padding-right: 35px;" 
+                    @bind-value="SearchedText" @bind-value:event="oninput" @onchange="SearchTable" />
+            </div>
+
+            @if (SearchedText != "")
+            {
+                <span class="cross-icon" @onclick="@(() => { SearchedText = ""; SearchTable(); })"></span>
+            }
+        </div>
+
+        @* Table Div *@
+        <div class="w-100">
+            <table class="table">
+                <thead>
+                    <tr scope="col">
+                        @if ((OrderPerColumnList  != null && (OrderPerColumnList.Count == 0 || OrderPerColumnList.Count == ObjectPropertyNames.Count)) && Ordered)
+                        {
+                            if (OrderPerColumnList.Count == 0)
+                            {
+                                var loopIndex = 0;
+                                foreach (var name in ObjectPropertyNames)
+                                {
+                                    var localLoopIndex = loopIndex;
+                                    var opacityUp = "0.5";
+                                    var opacityDown = "0.5";
+
+                                    if (OrderIndex == loopIndex)
+                                    {
+                                        if (OrderedUp)
+                                        {
+                                            opacityUp = "1";
+                                        }
+                                        else
+                                        {
+                                            opacityDown = "1";
+                                        }
+                                    }
+
+                                    //tis will be ordered
+                                    <th @onclick="@(() => { ReorderTable(localLoopIndex); })">
+                                        <div class="w-100 d-flex justify-content-between">
+                                            @name
+                                            <div class="me-2">
+                                                <svg viewBox="0 0 24 24" width="15" height="15" opacity="@opacityUp" stroke="#000000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                                                <svg viewBox="0 0 24 24" width="15" height="15" opacity="@opacityDown" stroke="#000000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                                            </div>
+                                        </div>
+                                    </th>
+
+                                    loopIndex++;
+                                }
+                            }
+                            else
+                            {
+                                var loopIndex = 0;
+                                foreach (var name in ObjectPropertyNames)
+                                {
+                                    if (OrderPerColumnList[loopIndex])
+                                    {
+                                        var localLoopIndex = loopIndex;
+                                        var opacityUp = "0.5";
+                                        var opacityDown = "0.5";
+
+                                        if (OrderIndex == loopIndex)
+                                        {
+                                            if (OrderedUp)
+                                            {
+                                                opacityUp = "1";
+                                            }
+                                            else
+                                            {
+                                                opacityDown = "1";
+                                            }
+                                        }
+
+                                        //tis will be ordered
+                                        <th @onclick="@(() => { ReorderTable(localLoopIndex); })">
+                                            <div class="w-100 d-flex justify-content-between">
+                                                @name
+                                                <div class="me-2">
+                                                    <svg viewBox="0 0 24 24" width="15" height="15" opacity="@opacityUp" stroke="#000000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                                                    <svg viewBox="0 0 24 24" width="15" height="15" opacity="@opacityDown" stroke="#000000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                                                </div>
+                                            </div>
+                                        </th>
+                                    }
+                                    else
+                                    {
+                                        <th>@name</th>
+                                    }
+
+                                    loopIndex++;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (var name in ObjectPropertyNames)
+                            {
+                                <th>@name</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ObjectPropertyValuesPaginated != null)
+                    {
+                        foreach (var values in ObjectPropertyValuesPaginated[CurrentPage])
+                        {
+                            <tr scope="row">
+                                @foreach (var value in values)
+                                {
+                                    <td>@value</td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Bottom Utilities *@
+        <div class="w-100 d-flex">
+            <div class="col-md-6">
+
+                @* Page Size Select *@
+                <div class="col-md-4 d-flex align-items-center">
+                    <p class="m-0 p-0 me-2">Page Size:</p>
+                    <select class="form-select w-50" @bind-value="PageSize" @bind-value:event="oninput" @onchange="ResizePages">
+                        @foreach (var size in PaginationSizes)
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-end">
+
+                @* Page navigator *@
+                <div class="btn-group" role="group">
+                    @if (NumberOfPages > 0)
+                    {
+                        //disable the buttons if is the first page
+                        if (CurrentPage != 0)
+                        {
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = 0; StateHasChanged(); })">
+                                @("<<")
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    @onclick="@(() => { CurrentPage = CurrentPage-1; StateHasChanged(); })">
+                                @("<")
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-outline-secondary" disabled>@("<<")</button>
+                            <button type="button" class="btn btn-outline-secondary" disabled>@("<")</button>
+                        }
+
+
+                        if (CurrentPage < 2)   //check if it's the first or secound pages
+                        {
+                            if (CurrentPage == 0)
+                            {
+                                <button type="button" class="btn btn-outline-secondary active">@(CurrentPage+1)</button>   //current page
+
+                                if (CurrentPage + 2 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+1; StateHasChanged(); })">
+                                        @(CurrentPage + 2)
+                                    </button>
+                                }
+
+                                if (CurrentPage + 3 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+2; StateHasChanged(); })">
+                                        @(CurrentPage + 3)
+                                    </button>
+                                }
+
+                                if (CurrentPage + 4 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+3; StateHasChanged(); })">
+                                        @(CurrentPage + 4)
+                                    </button>
+                                }
+
+                                if (CurrentPage + 5 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+4; StateHasChanged(); })">
+                                        @(CurrentPage + 5)
+                                    </button>
+                                }
+                            }
+                            else    // CurrentPage == 1
+                            {
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @onclick="@(() => { CurrentPage = CurrentPage-1; StateHasChanged(); })">
+                                    @(CurrentPage)
+                                </button>
+
+                                <button type="button" class="btn btn-outline-secondary active">@(CurrentPage + 1)</button>     //current page
+
+                                if (CurrentPage + 2 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+1; StateHasChanged(); })">
+                                        @(CurrentPage + 2)
+                                    </button>
+                                }
+
+                                if (CurrentPage + 3 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+2; StateHasChanged(); })">
+                                        @(CurrentPage + 3)
+                                    </button>
+                                }
+
+                                if (CurrentPage + 4 <= NumberOfPages)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage+3; StateHasChanged(); })">
+                                        @(CurrentPage + 4)
+                                    </button>
+                                }
+                            }
+                        }
+                        else if (CurrentPage >= NumberOfPages - 3)   //check if it's one of the last 2
+                        {
+                            if (CurrentPage != NumberOfPages - 1)   //one page to last
+                            {
+
+                                if (CurrentPage - 2 > 0)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage-3; StateHasChanged(); })">
+                                        @(CurrentPage - 2)
+                                    </button>
+                                }
+
+                                if (CurrentPage - 1 > 0)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage-2; StateHasChanged(); })">
+                                        @(CurrentPage - 1)
+                                    </button>
+                                }
+
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @onclick="@(() => { CurrentPage = CurrentPage-1; StateHasChanged(); })">
+                                    @(CurrentPage)
+                                </button>
+                                
+                                <button type="button" class="btn btn-outline-secondary active">@(CurrentPage + 1)</button>     //current page
+
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @onclick="@(() => { CurrentPage = CurrentPage+1; StateHasChanged(); })">
+                                    @(CurrentPage + 2)
+                                </button>
+                            }
+                            else    // CurrentPage == NumberOfPages - 1     //last page
+                            {
+                                if (CurrentPage - 3 > 0)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage-4; StateHasChanged(); })">
+                                        @(CurrentPage - 3)
+                                    </button>
+                                }
+
+                                if (CurrentPage - 2 > 0)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage-3; StateHasChanged(); })">
+                                        @(CurrentPage - 2)
+                                    </button>
+                                }
+
+                                if (CurrentPage - 1 > 0)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="@(() => { CurrentPage = CurrentPage-2; StateHasChanged(); })">
+                                        @(CurrentPage - 1)
+                                    </button>
+                                }
+
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @onclick="@(() => { CurrentPage = CurrentPage-1; StateHasChanged(); })">
+                                    @(CurrentPage)
+                                </button>
+                             
+                                <button type="button" class="btn btn-outline-secondary active">@(CurrentPage + 1)</button>     //current page
+                            }
+                        }
+                        else    //comportamento default de 2 de cada lado
+                        {
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = CurrentPage-2; StateHasChanged(); })">
+                                @(CurrentPage - 1)
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = CurrentPage-1; StateHasChanged(); })">
+                                @(CurrentPage)
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary active">@(CurrentPage + 1)</button> //current page
+
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = CurrentPage+1; StateHasChanged(); })">
+                                @(CurrentPage + 2)
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = CurrentPage+2; StateHasChanged(); })">
+                                @(CurrentPage + 3)
+                            </button>
+                        }
+
+                        //disable the buttons if is the last page
+                        if (CurrentPage != NumberOfPages - 1)
+                        {
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    @onclick="@(() => { CurrentPage = CurrentPage+1; StateHasChanged(); })">
+                                >
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="@(() => { CurrentPage = NumberOfPages-1;; StateHasChanged(); })">
+                                >>
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-outline-secondary" disabled>></button>
+                            <button type="button" class="btn btn-outline-secondary" disabled>>></button>
+                        }
+                    }
+                    else
+                    {
+                        <div class="w-100"><p class="h5">Sem dados a mostrar</p></div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else    //default behavior without without anything
+    {
+        <div class="w-100">
+            <table class="table">
+                <thead>
+                    <tr scope="col">
+                        @foreach (var name in ObjectPropertyNames)
+                        {
+                            <th>@name</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var values in ObjectPropertyValues)
+                    {
+                        <tr scope="row">
+                            @foreach (var value in values)
+                            {
+                                <td>@value</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public List<object> TableObjects { get; set; }
+    [Parameter]
+    public EventCallback<List<object>> TableObjectsChanged { get; set; }
+
+    [Parameter]
+    public bool HasPagination { get; set; } = true;
+    [Parameter]
+    public bool HasPaginationChanged { get; set; }
+
+    [Parameter]
+    public List<int> PaginationSizes { get; set; } = new List<int> {5, 10, 25};
+    [Parameter]
+    public List<int> PaginationSizesChanged { get; set; }
+    public int PageSize { get; set; } = 5;
+    public int CurrentPage { get; set; } = 0;
+    public int NumberOfPages { get; set; } = 0;
+
+    [Parameter]
+    public List<bool> OrderPerColumnList { get; set; }
+    [Parameter]
+    public bool Ordered { get; set; } = true;
+    public int OrderIndex = -1; //-1 will be none,the initial state
+    public bool OrderedUp = false;  //if it aint ordered up it's ordered down
+
+    private List<string> ObjectPropertyNames { get; set; }
+    private List<List<string>> ObjectPropertyValues { get; set; }
+    private List<List<List<string>>> ObjectPropertyValuesPaginated { get; set; }
+
+    private List<List<string>> ObjectPropertyValuesFiltered { get; set; }
+    private string SearchedText { get; set; } = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        if (TableObjects != null)
+        {
+            RetrieveObjectPropertys();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (firstRender)
+        {
+        }
+    }
+
+    public void RetrieveObjectPropertys()
+    {
+        object firstObj = TableObjects.FirstOrDefault();
+        if (firstObj != null)
+        {
+            ObjectPropertyNames = GetPropertyDescriptions(TableObjects);
+            if (Ordered && OrderPerColumnList == null)
+            {
+                OrderPerColumnList = new List<bool>();  //initialize as empty so it puts order in all columns
+            }
+
+            ObjectPropertyValues = GetPropertyValues(TableObjects);
+            ObjectPropertyValuesFiltered = ObjectPropertyValues;
+            ResizePages();
+        }
+    }
+
+    public void ReorderTable(int newOrderIndex)
+    {
+        if (OrderIndex == newOrderIndex)
+        {
+            OrderedUp = !OrderedUp;
+        }
+        else {
+            OrderedUp = true;
+            OrderIndex = newOrderIndex;
+        }
+
+        ObjectPropertyValuesFiltered = ObjectPropertyValuesFiltered.OrderMatrixByColumn(newOrderIndex, OrderedUp);
+        ResizePages();
+        StateHasChanged();
+    }
+
+    public void ResizePages()
+    {
+        CurrentPage = 0;
+        ObjectPropertyValuesPaginated = ObjectPropertyValuesFiltered.ChunkeateList(PageSize, out int numberOfPages);
+        NumberOfPages = numberOfPages;
+    }
+
+    public void SearchTable()
+    {
+        ObjectPropertyValuesFiltered = ObjectPropertyValues.FilterByTextMatching(SearchedText);
+        ResizePages();
+        StateHasChanged();
+    }
+
+    public static List<string> GetPropertyDescriptions(object obj)
+    {
+        var result = new List<string>();
+
+        try
+        {
+            // Handle JsonElement specifically
+            if (obj is JsonElement jsonElement)
+            {
+                switch (jsonElement.ValueKind)
+                {
+                    // Handle JSON objects
+                    case JsonValueKind.Object:
+                        foreach (var property in jsonElement.EnumerateObject())
+                        {
+                            result.Add(property.Name);
+                        }
+                        break;
+
+                    // Handle JSON arrays
+                    case JsonValueKind.Array:
+                        //using just the first because i just want this for the table headers
+                        var first = jsonElement.EnumerateArray().FirstOrDefault();
+                        result.AddRange(GetPropertyDescriptions(first));
+
+                        foreach (var item in jsonElement.EnumerateArray())
+                        {
+                            // Recursively retrieve properties of items in the array
+                            result.AddRange(GetPropertyDescriptions(item));
+                        }
+                        break;
+
+                    // if i can't retrieve the name i want to do nothing
+                    default:
+                        break;
+                }
+            }
+            // Handle collections like List<object>
+            else if (obj is IEnumerable<object> list)
+            {
+                object first = list.FirstOrDefault();
+                if (first != null)
+                {
+                    //using just the first because i just want this for the table headers
+                    result.AddRange(GetPropertyDescriptions(first));
+                }
+            }
+            // Handle normal C# objects using reflection
+            else
+            {
+                Type type = obj.GetType();
+                PropertyInfo[] properties = type.GetProperties();
+
+                foreach (PropertyInfo property in properties)
+                {
+                    result.Add(property.Name);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            string msg = ex.Message;
+        }
+
+        return result;
+    }
+
+    public static List<List<string>> GetPropertyValues(object obj)
+    {
+        var result = new List<List<string>>();
+
+        try
+        {
+            // Handle JsonElement specifically
+            if (obj is JsonElement jsonElement)
+            {
+                switch (jsonElement.ValueKind)
+                {
+                    // Handle JSON objects
+                    case JsonValueKind.Object:
+                        var row = new List<string>();
+                        foreach (var property in jsonElement.EnumerateObject())
+                        {
+                            row.Add(property.Value.ToString());
+                        }
+                        result.Add(row);
+                        break;
+
+                    // Handle JSON arrays
+                    case JsonValueKind.Array:
+                        foreach (var item in jsonElement.EnumerateArray())
+                        {
+                            // Recursively retrieve values of items in the array
+                            result.AddRange(GetPropertyValues(item));
+                        }
+                        break;
+
+                    // if i can't retrieve the name i want to do nothing
+                    default:
+                        break;
+                }
+            }
+            // Handle collections like List<object>
+            else if (obj is IEnumerable<object> list)
+            {
+                foreach (var item in list)
+                {
+                    result.AddRange(GetPropertyValues(item));
+                }
+            }
+            // Handle normal C# objects using reflection
+            else
+            {
+                var row = new List<string>();
+                Type type = obj.GetType();
+                PropertyInfo[] properties = type.GetProperties();
+
+                foreach (PropertyInfo property in properties)
+                {
+                    var value = property.GetValue(obj);
+                    row.Add(value?.ToString() ?? "");
+                }
+                result.Add(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            string msg = ex.Message;
+        }
+
+        return result;
+    }
+
+}

@@ -1,0 +1,33 @@
+﻿@page "/"
+
+<h3> DataTable </h3>
+
+<DataTableComponent.Pages.Compnents.DataTable @bind-TableObjects="TableObjects"></DataTableComponent.Pages.Compnents.DataTable>
+
+@code {
+    public List<object> TableObjects { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        if (TableObjects == null)
+        {
+            Random random = new Random();
+            TableObjects = new List<object>();
+
+            for (int i = 0; i < 103; i++)
+            {
+                var newObject = new
+                {
+                    id = i,
+                    name = $"Nome{i}",
+                    age = random.Next(20, 101)
+                };
+                TableObjects.Add(newObject);
+            }
+        }
+
+        StateHasChanged();
+    }
+}
